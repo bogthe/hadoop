@@ -20,12 +20,15 @@ package org.apache.hadoop.fs.s3a.auth;
 
 import java.io.IOException;
 import java.security.PrivilegedExceptionAction;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import com.amazonaws.SignableRequest;
+import com.amazonaws.arn.Arn;
 import com.amazonaws.auth.AWS4Signer;
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.Signer;
@@ -190,7 +193,7 @@ public class ITestCustomSigner extends AbstractS3ATestBase {
       LOG.info("Signing request #{}", c);
 
       String host = request.getEndpoint().getHost();
-      String bucketName = host.split("\\.")[0];
+      String bucketName = parseBucketFromHost(host);
       try {
         lastStoreValue = CustomSignerInitializer
             .getStoreValue(bucketName, UserGroupInformation.getCurrentUser());
@@ -212,6 +215,35 @@ public class ITestCustomSigner extends AbstractS3ATestBase {
         }
         realSigner.sign(request, credentials);
       }
+    }
+
+    private String parseBucketFromHost(String host) {
+      String[] hostBits = host.split("\\.");
+      String bucketName = hostBits[0];
+      String service = hostBits[1];
+
+      if (bucketName.equals("kms")) {
+        return bucketName;
+      }
+
+      if (service.contains("s3-accesspoint") || service.contains("s3-outposts")
+          || service.contains("s3-object-lambda")) {
+        // If AccessPoint then bucketName is of format `accessPoint-accountId`;
+        String[] accessPointBits = hostBits[0].split("-");
+        int lastElem = accessPointBits.length - 1;
+        String accountId = accessPointBits[lastElem];
+        String accessPointName = String.join("", Arrays.copyOf(accessPointBits, lastElem));
+        Arn arn = Arn.builder()
+            .withAccountId(accountId)
+            .withPartition("aws")
+            .withRegion(hostBits[2])
+            .withResource("accesspoint" + "/" + accessPointName)
+            .withService("s3").build();
+
+        bucketName = arn.toString();
+      }
+
+      return bucketName;
     }
 
     public static int getInstantiationCount() {

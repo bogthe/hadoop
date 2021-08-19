@@ -1574,6 +1574,49 @@ Why explicitly declare a bucket bound to the central endpoint? It ensures
 that if the default endpoint is changed to a new region, data store in
 US-east is still reachable.
 
+## <a name="accesspoints"></a>Configuring S3 AccessPoints usage with S3A
+S3a now supports [S3 Access Point](https://aws.amazon.com/s3/features/access-points/) usage which
+improves VPC integration with S3 and simplifies your data's permission model because different
+policies can be applied now on the Access Point level. For more information about why to use and
+how to create them make sure to read the official documentation.
+
+Accessing data through an access point, is done by using its ARN, as opposed to just the bucket name.
+You can set the Access Point ARN property using the following per bucket configuration property:
+```xml
+<property>
+    <name>fs.s3a.sample-bucket.accesspoint.arn</name>
+    <value> {ACCESSPOINT_ARN_HERE} </value>
+    <description>Configure S3a traffic to use this AccessPoint</description>
+</property>
+```
+
+Be mindful that this configures all access to the `sample-bucket` bucket for S3A, and in turn S3,
+to go through the new Access Point ARN. So, for example `s3a://sample-bucket/key` will now use your
+configured ARN when getting data from S3 instead of your bucket.
+
+You can also use an Access Point name as a path URI such as `s3a://finance-team-access/key`, by
+configuring the `.accesspoint.arn` property as a per-bucket override:
+```xml
+<property>
+    <name>fs.s3a.finance-team-access.accesspoint.arn</name>
+    <value> {ACCESSPOINT_ARN_HERE} </value>
+    <description>Configure S3a traffic to use this AccessPoint</description>
+</property>
+```
+
+Before using Access Points make sure you're not impacted by the following:
+- `ListObjectsV1` is not supported, arguably you shouldn't use it if you can;
+- The endpoint for S3 requests will automatically change from `s3.amazonaws.com` to use
+`s3-accesspoint.REGION.amazonaws.{com | com.cn}` depending on the Access Point ARN. This **only**
+happens if the `fs.s3a.endpoint` property isn't set. The endpoint property overwrites any changes,
+this is intentional so FIPS or DualStack endpoints can be set. While considering endpoints,
+if you have any custom signers that use the host endpoint property make sure to update them if
+needed;
+- Access Point names don't have to be globally unique, in the same way that bucket names have to.
+This means you may end up in a situation where you have 2 Access Points with the same name. If you
+do end up in this situation then use per bucket overrides and provide an alias to one of your
+access points;
+
 ## <a name="upload"></a>How S3A writes data to S3
 
 The original S3A client implemented file writes by

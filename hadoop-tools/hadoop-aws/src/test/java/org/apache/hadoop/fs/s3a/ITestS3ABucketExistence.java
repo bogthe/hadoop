@@ -27,6 +27,7 @@ import org.junit.Test;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.s3a.impl.InternalConstants;
 import org.apache.hadoop.io.IOUtils;
 import org.apache.hadoop.test.LambdaTestUtils;
 
@@ -158,6 +159,18 @@ public class ITestS3ABucketExistence extends AbstractS3ATestBase {
     intercept(IllegalArgumentException.class,
             "Value of " + S3A_BUCKET_PROBE + " should be >= 0",
             "Should throw IllegalArgumentException",
+        () -> FileSystem.get(uri, configuration));
+  }
+
+  @Test
+  public void testAccessPointProbingV2() throws Exception {
+    describe("Test V2 bucket probing using an AccessPoint ARN");
+    Configuration configuration = createConfigurationWithProbe(2);
+    String accessPointArn = "arn:aws:s3:eu-west-1:123456789012:accesspoint/" + randomBucket;
+    configuration.set(String.format(InternalConstants.ARN_BUCKET_OPTION, randomBucket),
+        accessPointArn);
+
+    expectUnknownStore(
         () -> FileSystem.get(uri, configuration));
   }
 

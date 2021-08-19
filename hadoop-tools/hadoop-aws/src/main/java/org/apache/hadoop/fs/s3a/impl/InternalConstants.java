@@ -134,4 +134,10 @@ public final class InternalConstants {
    */
   public static final int CSE_PADDING_LENGTH = 16;
 
+  /**
+   * AccessPoint ARN for the bucket. When set as a bucket override the requests for that bucket
+   * will go through the AccessPoint. Default value "".
+   */
+  public static final String ARN_BUCKET_OPTION = "fs.s3a.bucket.%s.accesspoint.arn";
+
 }

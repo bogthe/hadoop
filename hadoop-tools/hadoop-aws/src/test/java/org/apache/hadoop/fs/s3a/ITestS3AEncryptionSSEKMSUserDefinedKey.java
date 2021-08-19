@@ -18,13 +18,13 @@
 
 package org.apache.hadoop.fs.s3a;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 
 import static org.apache.hadoop.fs.contract.ContractTestUtils.skip;
 import static org.apache.hadoop.fs.s3a.Constants.SERVER_SIDE_ENCRYPTION_ALGORITHM;
 import static org.apache.hadoop.fs.s3a.Constants.SERVER_SIDE_ENCRYPTION_KEY;
 import static org.apache.hadoop.fs.s3a.S3AEncryptionMethods.SSE_KMS;
+import static org.apache.hadoop.fs.s3a.S3ATestUtils.skipIfKmsKeyIdIsNotSet;
 
 /**
  * Concrete class that extends {@link AbstractTestS3AEncryption}
@@ -39,12 +39,14 @@ public class ITestS3AEncryptionSSEKMSUserDefinedKey
     // get the KMS key for this test.
     Configuration c = new Configuration();
     String kmsKey = c.get(SERVER_SIDE_ENCRYPTION_KEY);
-    if (StringUtils.isBlank(kmsKey) || !c.get(SERVER_SIDE_ENCRYPTION_ALGORITHM)
-        .equals(S3AEncryptionMethods.CSE_KMS.name())) {
-      skip(SERVER_SIDE_ENCRYPTION_KEY + " is not set for " +
-          SSE_KMS.getMethod() + " or CSE-KMS algorithm is used instead of "
-          + "SSE-KMS");
+
+    skipIfKmsKeyIdIsNotSet(c);
+    // FS is not available at this point so checking CSE like this
+    if (c.get(SERVER_SIDE_ENCRYPTION_ALGORITHM, "")
+        .equals(S3AEncryptionMethods.CSE_KMS.getMethod())) {
+      skip("Skipping test, CSE is enabled.");
     }
+
     Configuration conf = super.createConfiguration();
     conf.set(SERVER_SIDE_ENCRYPTION_KEY, kmsKey);
     return conf;
